@@ -10,6 +10,7 @@
                    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
                    font-src 'self' https://fonts.gstatic.com; 
                    img-src 'self' data: https://res.cloudinary.com; 
+                   media-src 'self' https://res.cloudinary.com;
                    connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://api.cloudinary.com https://securetoken.googleapis.com;">
     <title>Digital Signage</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -51,7 +52,7 @@
             text-align: center;
             padding: 2rem;
         }
-        .slide img {
+        .slide img, .slide video {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
@@ -114,13 +115,13 @@
             <button id="update-ticker-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Update Ticker</button>
         </div>
 
-        <!-- Upload Image Section -->
+        <!-- Upload Media Section -->
         <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6">
-            <h3 class="text-xl font-bold">Upload Image Slide</h3>
-            <input type="file" id="image-upload-input" accept="image/*" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-            <button id="upload-image-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
-                <span id="upload-image-btn-text">Upload Image</span>
-                <div id="upload-image-loader" class="loader hidden ml-2"></div>
+            <h3 class="text-xl font-bold">Upload Media Slide</h3>
+            <input type="file" id="media-upload-input" accept="image/*,video/*" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            <button id="upload-media-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+                <span id="upload-media-btn-text">Upload Media</span>
+                <div id="upload-media-loader" class="loader hidden ml-2"></div>
             </button>
         </div>
 
@@ -196,10 +197,10 @@
             addSlideBtn: document.getElementById('add-slide-btn'),
             slidesList: document.getElementById('current-slides-list'),
             locationDisplay: document.getElementById('location-display'),
-            imageUploadInput: document.getElementById('image-upload-input'),
-            uploadImageBtn: document.getElementById('upload-image-btn'),
-            uploadImageBtnText: document.getElementById('upload-image-btn-text'),
-            uploadImageLoader: document.getElementById('upload-image-loader'),
+            mediaUploadInput: document.getElementById('media-upload-input'),
+            uploadMediaBtn: document.getElementById('upload-media-btn'),
+            uploadMediaBtnText: document.getElementById('upload-media-btn-text'),
+            uploadMediaLoader: document.getElementById('upload-media-loader'),
         };
 
         // STATE
@@ -361,23 +362,26 @@
             await deleteDoc(doc(db, `/artifacts/${appId}/public/data/slides-${managedSessionId}`, id));
         }
 
-        // --- IMAGE UPLOAD ---
-        async function uploadImage() {
-            const file = dom.imageUploadInput.files[0];
+        // --- MEDIA UPLOAD ---
+        async function uploadMedia() {
+            const file = dom.mediaUploadInput.files[0];
             if (!file) {
                 alert("Please select a file to upload.");
                 return;
             }
 
-            dom.uploadImageBtnText.classList.add('hidden');
-            dom.uploadImageLoader.classList.remove('hidden');
+            dom.uploadMediaBtnText.classList.add('hidden');
+            dom.uploadMediaLoader.classList.remove('hidden');
 
             const formData = new FormData();
             formData.append('file', file);
             formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+            
+            const isVideo = file.type.startsWith('video/');
+            const resourceType = isVideo ? 'video' : 'image';
 
             try {
-                const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, {
                     method: 'POST',
                     body: formData
                 });
@@ -387,21 +391,21 @@
                 }
 
                 const data = await response.json();
-                const imageUrl = data.secure_url;
+                const mediaUrl = data.secure_url;
 
                 await addSlide({
                     title: file.name,
-                    body: imageUrl,
-                    type: 'image'
+                    body: mediaUrl,
+                    type: isVideo ? 'video' : 'image'
                 });
 
-                dom.imageUploadInput.value = ''; // Clear file input
+                dom.mediaUploadInput.value = ''; // Clear file input
             } catch (error) {
-                console.error("Error uploading image:", error);
-                alert("Image upload failed. Please check the console for details.");
+                console.error("Error uploading media:", error);
+                alert("Media upload failed. Please check the console for details.");
             } finally {
-                dom.uploadImageBtnText.classList.remove('hidden');
-                dom.uploadImageLoader.classList.add('hidden');
+                dom.uploadMediaBtnText.classList.remove('hidden');
+                dom.uploadMediaLoader.classList.add('hidden');
             }
         }
 
@@ -413,6 +417,7 @@
                 slideEl.className = 'bg-gray-800 p-2 rounded flex justify-between items-center';
                 let icon = '📝'; // Default to text
                 if (slide.type === 'image') icon = '🖼️';
+                if (slide.type === 'video') icon = '🎬';
                 
                 slideEl.innerHTML = `<p class="truncate"><span class="mr-2">${icon}</span>${slide.title || slide.body}</p>
                     <button data-id="${slide.id}" class="delete-slide-btn text-red-500 hover:text-red-400 font-bold px-2">&times;</button>`;
@@ -434,18 +439,33 @@
         function showNextSlide() {
             if (slides.length === 0) return;
             const slideData = slides[currentSlideIndex];
-            const slideElement = document.createElement('div');
-            slideElement.className = 'slide';
-            let content = '';
+            dom.contentArea.innerHTML = ''; // Clear previous content
+
+            let contentElement;
             if (slideData.type === 'image') {
-                content = `<img src="${slideData.body}" alt="${slideData.title}">`;
+                contentElement = document.createElement('img');
+                contentElement.src = slideData.body;
+                contentElement.alt = slideData.title;
+            } else if (slideData.type === 'video') {
+                contentElement = document.createElement('video');
+                contentElement.src = slideData.body;
+                contentElement.autoplay = true;
+                contentElement.muted = true;
+                contentElement.loop = true;
             } else {
-                if (slideData.title) content += `<h1 class="text-7xl font-bold mb-4">${slideData.title}</h1>`;
-                if (slideData.body) content += `<p class="text-3xl text-gray-300">${slideData.body}</p>`;
+                contentElement = document.createElement('div');
+                let textContent = '';
+                if (slideData.title) textContent += `<h1 class="text-7xl font-bold mb-4">${slideData.title}</h1>`;
+                if (slideData.body) textContent += `<p class="text-3xl text-gray-300">${slideData.body}</p>`;
+                contentElement.innerHTML = textContent;
             }
-            slideElement.innerHTML = content;
-            dom.contentArea.innerHTML = '';
-            dom.contentArea.appendChild(slideElement);
+            
+            const slideContainer = document.createElement('div');
+            slideContainer.className = 'slide';
+            slideContainer.style.display = 'flex'; // Make it visible
+            slideContainer.appendChild(contentElement);
+            dom.contentArea.appendChild(slideContainer);
+
             currentSlideIndex = (currentSlideIndex + 1) % slides.length;
         }
 
@@ -469,7 +489,7 @@
                     deleteSlide(deleteBtn.getAttribute('data-id'));
                 }
             });
-            dom.uploadImageBtn.addEventListener('click', uploadImage);
+            dom.uploadMediaBtn.addEventListener('click', uploadMedia);
         }
 
         document.addEventListener('DOMContentLoaded', init);
