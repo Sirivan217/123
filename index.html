@@ -105,12 +105,16 @@
                 <input type="text" id="new-location-name" placeholder="e.g., Chicago Lobby" class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white">
                 <button id="create-location-btn" class="mt-2 w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg">Create Location</button>
             </div>
-             <div id="new-location-setup" class="hidden mt-2 p-2 bg-gray-700 rounded">
-                <p class="text-sm text-gray-300">Use this URL once on the new TV:</p>
-                <input type="text" id="new-location-url" readonly class="w-full bg-gray-600 text-white font-mono text-xs p-1 mt-1 rounded">
-            </div>
         </div>
         
+        <!-- Links for Locations -->
+        <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6">
+            <h3 class="text-xl font-bold">Links for Locations</h3>
+            <div id="location-links-list" class="space-y-2">
+                <!-- Links will be injected here -->
+            </div>
+        </div>
+
         <!-- Ticker Management -->
         <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6 border border-green-500">
             <h3 class="text-xl font-bold text-green-300">Ticker Announcement</h3>
@@ -199,8 +203,7 @@
             newLocationName: document.getElementById('new-location-name'),
             createLocationBtn: document.getElementById('create-location-btn'),
             deleteLocationBtn: document.getElementById('delete-location-btn'),
-            newLocationSetup: document.getElementById('new-location-setup'),
-            newLocationUrl: document.getElementById('new-location-url'),
+            locationLinksList: document.getElementById('location-links-list'),
             tickerInput: document.getElementById('ticker-input'),
             updateTickerBtn: document.getElementById('update-ticker-btn'),
             slideTitle: document.getElementById('slide-title'),
@@ -287,6 +290,7 @@
             const snapshot = await getDocs(query(locationsCollection));
             locations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             
+            // Populate dropdown
             dom.locationSelect.innerHTML = '';
             locations.forEach(loc => {
                 const option = document.createElement('option');
@@ -294,6 +298,24 @@
                 option.textContent = loc.name;
                 dom.locationSelect.appendChild(option);
             });
+            
+            // Populate links list
+            const linksContainer = dom.locationLinksList;
+            linksContainer.innerHTML = '';
+            if (locations.length === 0) {
+                linksContainer.innerHTML = '<p class="text-sm text-gray-400">No locations created yet.</p>';
+            } else {
+                locations.forEach(loc => {
+                    const linkEl = document.createElement('div');
+                    linkEl.className = 'space-y-1';
+                    const setupUrl = `${window.location.origin}${window.location.pathname}?session=${loc.sessionId}`;
+                    linkEl.innerHTML = `
+                        <label class="block text-sm font-medium text-gray-300">${loc.name}</label>
+                        <input type="text" readonly value="${setupUrl}" class="w-full bg-gray-600 text-white font-mono text-xs p-1 rounded">
+                    `;
+                    linksContainer.appendChild(linkEl);
+                });
+            }
             
             const currentLoc = locations.find(l => l.sessionId === deviceSessionId);
             dom.locationDisplay.textContent = currentLoc ? currentLoc.name : `Unassigned (${deviceSessionId.substring(0, 6)})`;
@@ -315,10 +337,7 @@
             const locationsCollection = collection(db, `/artifacts/${appId}/public/data/locations`);
             await setDoc(doc(locationsCollection, newSessionId), { name: name, sessionId: newSessionId });
             
-            const setupUrl = `${window.location.origin}${window.location.pathname}?session=${newSessionId}`;
-            dom.newLocationUrl.value = setupUrl;
-            dom.newLocationSetup.classList.remove('hidden');
-
+            dom.newLocationName.value = '';
             await listenForLocations();
             dom.locationSelect.value = newSessionId;
             switchManagedSession(newSessionId);
