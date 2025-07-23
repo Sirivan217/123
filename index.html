@@ -94,9 +94,11 @@
         <!-- Location Management -->
         <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6 border border-cyan-500">
             <h3 class="text-xl font-bold text-cyan-300">Location Manager</h3>
-            <div>
-                <label for="location-select" class="block text-sm font-medium text-gray-300">Manage Location</label>
-                <select id="location-select" class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"></select>
+            <div class="flex items-center space-x-2">
+                <select id="location-select" class="block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"></select>
+                <button id="delete-location-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold p-2 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
             </div>
             <div class="pt-2">
                  <label for="new-location-name" class="block text-sm font-medium text-gray-300">Create New Location</label>
@@ -196,6 +198,7 @@
             locationSelect: document.getElementById('location-select'),
             newLocationName: document.getElementById('new-location-name'),
             createLocationBtn: document.getElementById('create-location-btn'),
+            deleteLocationBtn: document.getElementById('delete-location-btn'),
             newLocationSetup: document.getElementById('new-location-setup'),
             newLocationUrl: document.getElementById('new-location-url'),
             tickerInput: document.getElementById('ticker-input'),
@@ -319,6 +322,45 @@
             await listenForLocations();
             dom.locationSelect.value = newSessionId;
             switchManagedSession(newSessionId);
+        }
+        
+        async function deleteLocation() {
+            const sessionIdToDelete = dom.locationSelect.value;
+            if (!sessionIdToDelete || !db) return;
+
+            const locationNameToDelete = locations.find(l => l.sessionId === sessionIdToDelete)?.name;
+            if (!confirm(`Are you sure you want to delete the location "${locationNameToDelete}" and all of its slides? This cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                // Delete the location document
+                await deleteDoc(doc(db, `/artifacts/${appId}/public/data/locations`, sessionIdToDelete));
+
+                // Delete all slides for that location
+                const slidesQuery = query(collection(db, `/artifacts/${appId}/public/data/slides-${sessionIdToDelete}`));
+                const slidesSnapshot = await getDocs(slidesQuery);
+                for (const slideDoc of slidesSnapshot.docs) {
+                    await deleteDoc(slideDoc.ref);
+                }
+
+                // Delete the ticker message for that location
+                await deleteDoc(doc(db, `/artifacts/${appId}/public/data/ticker-${sessionIdToDelete}/message`));
+
+                // If the deleted location was the current device's location, reset it
+                if (deviceSessionId === sessionIdToDelete) {
+                    localStorage.removeItem('digital-signage-session-id');
+                    deviceSessionId = crypto.randomUUID();
+                    localStorage.setItem('digital-signage-session-id', deviceSessionId);
+                }
+
+                // Refresh the locations list
+                await listenForLocations();
+
+            } catch (error) {
+                console.error("Error deleting location:", error);
+                alert("Failed to delete location.");
+            }
         }
 
         function switchManagedSession(newSessionId) {
@@ -497,6 +539,7 @@
             dom.openAdminBtn.addEventListener('click', () => dom.admin.classList.remove('translate-x-full'));
             dom.closeAdminBtn.addEventListener('click', () => dom.admin.classList.add('translate-x-full'));
             dom.createLocationBtn.addEventListener('click', () => createLocation(dom.newLocationName.value));
+            dom.deleteLocationBtn.addEventListener('click', deleteLocation);
             dom.locationSelect.addEventListener('change', (e) => switchManagedSession(e.target.value));
             dom.updateTickerBtn.addEventListener('click', () => updateTicker(dom.tickerInput.value));
             dom.addSlideBtn.addEventListener('click', () => addSlide({ title: dom.slideTitle.value, body: dom.slideBody.value, type: 'text' }));
@@ -510,10 +553,6 @@
             dom.addGslideBtn.addEventListener('click', () => {
                 const publishUrl = dom.gslideUrlInput.value;
                 if (!publishUrl) return;
-
-                // Transform the publish URL into an embed URL
-                // Example: https://docs.google.com/presentation/d/e/[ID]/pub?start=false...
-                // Becomes: https://docs.google.com/presentation/d/e/[ID]/embed?start=true&loop=true&delayms=3000&rm=minimal
                 try {
                     const url = new URL(publishUrl);
                     const path = url.pathname;
