@@ -11,6 +11,7 @@
                    font-src 'self' https://fonts.gstatic.com; 
                    img-src 'self' data: https://res.cloudinary.com; 
                    media-src 'self' https://res.cloudinary.com;
+                   frame-src 'self' https://docs.google.com;
                    connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://api.cloudinary.com https://securetoken.googleapis.com;">
     <title>Digital Signage</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -52,11 +53,14 @@
             text-align: center;
             padding: 2rem;
         }
-        .slide img, .slide video {
+        .slide img, .slide video, .slide iframe {
             max-width: 100%;
             max-height: 100%;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
             border-radius: 0.5rem;
+            border: none;
         }
         @keyframes fadeEffect {
             from {opacity: .4}
@@ -115,6 +119,13 @@
             <button id="update-ticker-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Update Ticker</button>
         </div>
 
+        <!-- Add Google Slides Section -->
+        <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6">
+            <h3 class="text-xl font-bold">Add Google Slides</h3>
+            <input type="text" id="gslide-url-input" placeholder="Paste 'Publish to web' link here" class="block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white">
+            <button id="add-gslide-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg">Add Google Slides</button>
+        </div>
+
         <!-- Upload Media Section -->
         <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6">
             <h3 class="text-xl font-bold">Upload Media Slide</h3>
@@ -140,31 +151,28 @@
     </div>
 
     <!-- Main Content Grid -->
-    <main class="flex-grow grid grid-cols-1 grid-rows-3 gap-4 p-4 h-full">
+    <main class="flex-grow grid grid-cols-1 grid-rows-6 gap-4 p-4 h-full">
         
-        <div class="col-span-1 row-span-1 flex justify-between items-start px-2">
+        <header class="col-span-1 row-span-2 flex justify-between items-start px-2">
             <div>
-                <p class="text-lg text-gray-400">Location:</p>
-                <p id="location-display" class="text-2xl font-bold text-gray-200">Loading...</p>
+                <p class="text-3xl text-gray-400">Location:</p>
+                <p id="location-display" class="text-5xl font-bold text-gray-200">Loading...</p>
             </div>
-            <button id="open-admin-btn" class="bg-gray-700/50 hover:bg-gray-600/50 text-white font-bold py-2 px-4 rounded-lg text-sm hidden">Admin</button>
-        </div>
-
-        <header class="col-span-1 row-span-1 grid grid-cols-1 gap-4 -mt-16">
-            <div id="time-date-container" class="bg-gray-800/50 rounded-lg p-6 flex flex-col justify-center items-center">
-                <div id="time" class="text-9xl font-black"></div>
-                <div id="date" class="text-5xl font-bold text-gray-400"></div>
+            <div id="time-date-container" class="h-full flex flex-col justify-center items-end">
+                <div id="time" class="text-[10rem] font-black leading-none"></div>
+                <div id="date" class="text-4xl font-bold text-gray-400"></div>
             </div>
+             <button id="open-admin-btn" class="bg-gray-700/50 hover:bg-gray-600/50 text-white font-bold py-2 px-4 rounded-lg text-sm hidden self-start">Admin</button>
         </header>
 
-        <section id="content-area" class="col-span-1 row-span-1 bg-gray-800/50 rounded-lg p-8 flex justify-center items-center overflow-hidden">
+        <section id="content-area" class="col-span-1 row-span-4 bg-gray-800/50 rounded-lg p-2 flex justify-center items-center overflow-hidden">
         </section>
 
     </main>
 
-    <footer class="ticker-wrap h-16 flex items-center justify-between px-4">
+    <footer class="ticker-wrap h-20 flex items-center justify-between px-4">
         <div class="flex-grow overflow-hidden">
-            <div id="ticker" class="ticker text-2xl font-bold"></div>
+            <div id="ticker" class="ticker text-4xl font-bold"></div>
         </div>
     </footer>
 
@@ -201,6 +209,8 @@
             uploadMediaBtn: document.getElementById('upload-media-btn'),
             uploadMediaBtnText: document.getElementById('upload-media-btn-text'),
             uploadMediaLoader: document.getElementById('upload-media-loader'),
+            gslideUrlInput: document.getElementById('gslide-url-input'),
+            addGslideBtn: document.getElementById('add-gslide-btn'),
         };
 
         // STATE
@@ -355,6 +365,7 @@
             await addDoc(slidesCollection, { ...slideData, createdAt: new Date() });
             dom.slideTitle.value = '';
             dom.slideBody.value = '';
+            dom.gslideUrlInput.value = '';
         }
         
         async function deleteSlide(id) {
@@ -418,6 +429,7 @@
                 let icon = '📝'; // Default to text
                 if (slide.type === 'image') icon = '🖼️';
                 if (slide.type === 'video') icon = '🎬';
+                if (slide.type === 'google-slide') icon = '📊';
                 
                 slideEl.innerHTML = `<p class="truncate"><span class="mr-2">${icon}</span>${slide.title || slide.body}</p>
                     <button data-id="${slide.id}" class="delete-slide-btn text-red-500 hover:text-red-400 font-bold px-2">&times;</button>`;
@@ -432,7 +444,7 @@
                 showNextSlide();
                 slideInterval = setInterval(showNextSlide, SLIDE_INTERVAL_MS);
             } else {
-                dom.contentArea.innerHTML = `<div class="slide"><h1 class="text-5xl font-bold">No Content</h1><p class="text-xl text-gray-400 mt-4">Add slides via the admin panel.</p></div>`;
+                dom.contentArea.innerHTML = `<div class="slide"><h1 class="text-7xl font-bold">No Content</h1><p class="text-4xl text-gray-400 mt-4">Add slides via the admin panel.</p></div>`;
             }
         }
 
@@ -452,11 +464,16 @@
                 contentElement.autoplay = true;
                 contentElement.muted = true;
                 contentElement.loop = true;
+            } else if (slideData.type === 'google-slide') {
+                contentElement = document.createElement('iframe');
+                contentElement.src = slideData.body;
+                contentElement.setAttribute('frameborder', '0');
+                contentElement.setAttribute('allowfullscreen', 'true');
             } else {
                 contentElement = document.createElement('div');
                 let textContent = '';
-                if (slideData.title) textContent += `<h1 class="text-7xl font-bold mb-4">${slideData.title}</h1>`;
-                if (slideData.body) textContent += `<p class="text-3xl text-gray-300">${slideData.body}</p>`;
+                if (slideData.title) textContent += `<h1 class="text-8xl font-bold mb-4">${slideData.title}</h1>`;
+                if (slideData.body) textContent += `<p class="text-5xl text-gray-300">${slideData.body}</p>`;
                 contentElement.innerHTML = textContent;
             }
             
@@ -490,6 +507,28 @@
                 }
             });
             dom.uploadMediaBtn.addEventListener('click', uploadMedia);
+            dom.addGslideBtn.addEventListener('click', () => {
+                const publishUrl = dom.gslideUrlInput.value;
+                if (!publishUrl) return;
+
+                // Transform the publish URL into an embed URL
+                // Example: https://docs.google.com/presentation/d/e/[ID]/pub?start=false...
+                // Becomes: https://docs.google.com/presentation/d/e/[ID]/embed?start=true&loop=true&delayms=3000&rm=minimal
+                try {
+                    const url = new URL(publishUrl);
+                    const path = url.pathname;
+                    const embedUrl = `https://docs.google.com${path.replace('/pub', '/embed')}?start=true&loop=true&delayms=3000&rm=minimal`;
+                    
+                    addSlide({
+                        title: 'Google Slides',
+                        body: embedUrl,
+                        type: 'google-slide'
+                    });
+                } catch (error) {
+                    alert("Invalid Google Slides URL. Please use the 'Publish to the web' link.");
+                    console.error("Error parsing Google Slides URL:", error);
+                }
+            });
         }
 
         document.addEventListener('DOMContentLoaded', init);
