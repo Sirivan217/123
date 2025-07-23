@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- FIX: Final, correct Content-Security-Policy -->
+    <!-- Final, correct Content-Security-Policy -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self'; 
                    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://www.gstatic.com; 
@@ -174,8 +174,8 @@
 
         // --- CONFIGURATION ---
         const SLIDE_INTERVAL_MS = 10000;
-        const CLOUDINARY_CLOUD_NAME = "__CLOUDINARY_CLOUD_NAME__";
-        const CLOUDINARY_UPLOAD_PRESET = "__CLOUDINARY_UPLOAD_PRESET__";
+        const CLOUDINARY_CLOUD_NAME = "dmf6mcbcc";
+        const CLOUDINARY_UPLOAD_PRESET = "vbtgev5e";
 
         // DOM ELEMENTS
         const dom = {
@@ -239,13 +239,13 @@
         async function setupFirebase() {
             try {
                 const firebaseConfig = {
-                    apiKey: "__FIREBASE_API_KEY__",
-                    authDomain: "__FIREBASE_AUTH_DOMAIN__",
-                    projectId: "__FIREBASE_PROJECT_ID__",
-                    storageBucket: "__FIREBASE_STORAGE_BUCKET__",
-                    messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
-                    appId: "__FIREBASE_APP_ID__",
-                    measurementId: "__FIREBASE_MEASUREMENT_ID__"
+                    apiKey: "AIzaSyAaCq6gcenpxE3y6jSEje-VcbZ3kAJeEXA",
+                    authDomain: "signage-4be93.firebaseapp.com",
+                    projectId: "signage-4be93",
+                    storageBucket: "signage-4be93.appspot.com",
+                    messagingSenderId: "521974544025",
+                    appId: "1:521974544025:web:89c97f0139465951e2aa08",
+                    measurementId: "G-R0K34JM9R7"
                 };
 
                 const app = initializeApp(firebaseConfig);
@@ -366,10 +366,6 @@
             const file = dom.imageUploadInput.files[0];
             if (!file) {
                 alert("Please select a file to upload.");
-                return;
-            }
-            if (CLOUDINARY_CLOUD_NAME === "__CLOUDINARY_CLOUD_NAME__" || CLOUDINARY_UPLOAD_PRESET === "__CLOUDINARY_UPLOAD_PRESET__") {
-                alert("Please configure your Cloudinary details via GitHub secrets.");
                 return;
             }
 
