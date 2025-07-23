@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions: # Add this section
+      contents: write # This grants the action permission to write to your repository
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
