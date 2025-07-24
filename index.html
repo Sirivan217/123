@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Final, correct Content-Security-Policy -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self'; 
                    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://www.gstatic.com; 
@@ -13,15 +12,15 @@
                    media-src 'self' https://res.cloudinary.com;
                    frame-src 'self' https://docs.google.com;
                    connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://api.cloudinary.com https://securetoken.googleapis.com;">
-    <title>Digital Signage</title>
+    <title>Digital Signage Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #111827; /* Tailwind gray-900 */
-            color: #F9FAFB; /* Tailwind gray-50 */
-            overflow: hidden; /* Hide scrollbars */
+            background-color: #111827;
+            color: #F9FAFB;
+            overflow: hidden;
         }
         .ticker-wrap {
             width: 100%;
@@ -41,30 +40,24 @@
             0% { transform: translate3d(0, 0, 0); }
             100% { transform: translate3d(-100%, 0, 0); }
         }
-        .slide {
-            display: none;
-            animation: fadeEffect 1.5s;
-            width: 100%;
-            height: 100%;
+        .content-card {
+            background-color: rgba(17, 24, 39, 0.5); /* gray-900/50 */
+            border-radius: 0.75rem;
+            padding: 1rem;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 2rem;
         }
-        .slide img, .slide video, .slide iframe {
-            max-width: 100%;
-            max-height: 100%;
+        .content-card-media {
+            flex-grow: 1;
+            min-height: 0;
+        }
+        .content-card-media img, .content-card-media video, .content-card-media iframe {
             width: 100%;
             height: 100%;
             object-fit: contain;
             border-radius: 0.5rem;
             border: none;
-        }
-        @keyframes fadeEffect {
-            from {opacity: .4}
-            to {opacity: 1}
         }
         #admin-panel {
             transition: transform 0.3s ease-in-out;
@@ -82,10 +75,19 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        #fireworks-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col relative">
-
+    <canvas id="fireworks-canvas"></canvas>
     <!-- Admin Panel -->
     <div id="admin-panel" class="absolute top-0 right-0 h-full w-1/3 bg-gray-900/95 p-6 shadow-2xl transform translate-x-full z-50 overflow-y-auto">
         <h2 class="text-3xl font-bold mb-6">Admin Panel</h2>
@@ -110,33 +112,45 @@
         <!-- Links for Locations -->
         <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6">
             <h3 class="text-xl font-bold">Links for Locations</h3>
-            <div id="location-links-list" class="space-y-2">
-                <!-- Links will be injected here -->
-            </div>
+            <div id="location-links-list" class="space-y-2"></div>
+        </div>
+
+        <!-- Celebration Effects -->
+        <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6 border border-pink-500">
+            <h3 class="text-xl font-bold text-pink-300">Celebration Effects</h3>
+            <button id="fireworks-btn" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg">🎉 Launch HR Fireworks</button>
         </div>
 
         <!-- Ticker Management -->
         <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6 border border-green-500">
             <h3 class="text-xl font-bold text-green-300">Ticker Announcement</h3>
-            <div>
-                <label for="ticker-input" class="block text-sm font-medium text-gray-300">Ticker Message</label>
-                <input type="text" id="ticker-input" class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white">
-            </div>
-            <button id="update-ticker-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Update Ticker</button>
+            <input type="text" id="ticker-input" class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white">
+            <button id="update-ticker-btn" class="mt-2 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Update Ticker</button>
+        </div>
+
+        <!-- Add Content Section -->
+        <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6">
+            <h3 class="text-xl font-bold">Add Content</h3>
+             <label for="category-select" class="block text-sm font-medium text-gray-300">Category</label>
+             <select id="category-select" class="block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white">
+                <option value="production">Production</option>
+                <option value="quality">Quality</option>
+                <option value="hr">HR</option>
+             </select>
         </div>
 
         <!-- Add Google Slides Section -->
         <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6">
             <h3 class="text-xl font-bold">Add Google Slides</h3>
             <input type="text" id="gslide-url-input" placeholder="Paste 'Publish to web' link here" class="block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white">
-            <button id="add-gslide-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg">Add Google Slides</button>
+            <button id="add-gslide-btn" class="mt-2 w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg">Add Google Slides</button>
         </div>
 
         <!-- Upload Media Section -->
         <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6">
             <h3 class="text-xl font-bold">Upload Media Slide</h3>
             <input type="file" id="media-upload-input" accept="image/*,video/*" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-            <button id="upload-media-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+            <button id="upload-media-btn" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
                 <span id="upload-media-btn-text">Upload Media</span>
                 <div id="upload-media-loader" class="loader hidden ml-2"></div>
             </button>
@@ -147,7 +161,7 @@
             <h3 class="text-xl font-bold">Add Text Slide</h3>
              <input type="text" id="slide-title" placeholder="Title" class="block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white">
             <textarea id="slide-body" rows="4" placeholder="Body Text" class="block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"></textarea>
-            <button id="add-slide-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Add Slide</button>
+            <button id="add-slide-btn" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Add Slide</button>
         </div>
 
         <div class="mt-8">
@@ -157,23 +171,38 @@
     </div>
 
     <!-- Main Content Grid -->
-    <main class="flex-grow grid grid-cols-1 grid-rows-6 gap-4 p-4 h-full">
-        
-        <header class="col-span-1 row-span-2 flex justify-between items-start px-2">
-            <div>
-                <p class="text-3xl text-gray-400">Location:</p>
-                <p id="location-display" class="text-5xl font-bold text-gray-200">Loading...</p>
+    <main class="flex-grow grid grid-cols-5 grid-rows-1 gap-4 p-4 h-full">
+        <!-- Main Content Area -->
+        <div class="col-span-4 flex flex-col gap-4">
+             <header class="flex justify-between items-center px-2">
+                <div>
+                    <p class="text-3xl text-gray-400">Location:</p>
+                    <p id="location-display" class="text-5xl font-bold text-gray-200">Loading...</p>
+                </div>
+                <div id="time-date-container" class="text-right">
+                    <div id="time" class="text-9xl font-black leading-none"></div>
+                    <div id="date" class="text-4xl font-bold text-gray-400"></div>
+                </div>
+                 <button id="open-admin-btn" class="bg-gray-700/50 hover:bg-gray-600/50 text-white font-bold py-2 px-4 rounded-lg text-sm hidden self-start">Admin</button>
+            </header>
+            <div class="flex-grow grid grid-cols-2 gap-4">
+                <!-- Production Column -->
+                <div class="flex flex-col gap-4">
+                    <h2 class="text-5xl font-bold text-center">Production</h2>
+                    <div id="production-content" class="flex-grow space-y-4 overflow-y-auto"></div>
+                </div>
+                <!-- Quality Column -->
+                <div class="flex flex-col gap-4">
+                    <h2 class="text-5xl font-bold text-center">Quality</h2>
+                    <div id="quality-content" class="flex-grow space-y-4 overflow-y-auto"></div>
+                </div>
             </div>
-            <div id="time-date-container" class="h-full flex flex-col justify-center items-end">
-                <div id="time" class="text-[10rem] font-black leading-none"></div>
-                <div id="date" class="text-4xl font-bold text-gray-400"></div>
-            </div>
-             <button id="open-admin-btn" class="bg-gray-700/50 hover:bg-gray-600/50 text-white font-bold py-2 px-4 rounded-lg text-sm hidden self-start">Admin</button>
-        </header>
-
-        <section id="content-area" class="col-span-1 row-span-4 bg-gray-800/50 rounded-lg p-2 flex justify-center items-center overflow-hidden">
-        </section>
-
+        </div>
+        <!-- HR Column -->
+        <div class="col-span-1 flex flex-col gap-4">
+             <h2 class="text-5xl font-bold text-center">HR</h2>
+             <div id="hr-content" class="flex-grow space-y-4 overflow-y-auto"></div>
+        </div>
     </main>
 
     <footer class="ticker-wrap h-20 flex items-center justify-between px-4">
@@ -188,7 +217,6 @@
         import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc, setDoc, setLogLevel, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- CONFIGURATION ---
-        const SLIDE_INTERVAL_MS = 10000;
         const CLOUDINARY_CLOUD_NAME = "dmf6mcbcc";
         const CLOUDINARY_UPLOAD_PRESET = "vbtgev5e";
 
@@ -196,7 +224,6 @@
         const dom = {
             time: document.getElementById('time'), date: document.getElementById('date'),
             ticker: document.getElementById('ticker'),
-            contentArea: document.getElementById('content-area'),
             admin: document.getElementById('admin-panel'), openAdminBtn: document.getElementById('open-admin-btn'),
             closeAdminBtn: document.getElementById('close-admin-btn'),
             locationSelect: document.getElementById('location-select'),
@@ -206,6 +233,7 @@
             locationLinksList: document.getElementById('location-links-list'),
             tickerInput: document.getElementById('ticker-input'),
             updateTickerBtn: document.getElementById('update-ticker-btn'),
+            categorySelect: document.getElementById('category-select'),
             slideTitle: document.getElementById('slide-title'),
             slideBody: document.getElementById('slide-body'),
             addSlideBtn: document.getElementById('add-slide-btn'),
@@ -217,13 +245,18 @@
             uploadMediaLoader: document.getElementById('upload-media-loader'),
             gslideUrlInput: document.getElementById('gslide-url-input'),
             addGslideBtn: document.getElementById('add-gslide-btn'),
+            productionContent: document.getElementById('production-content'),
+            qualityContent: document.getElementById('quality-content'),
+            hrContent: document.getElementById('hr-content'),
+            fireworksBtn: document.getElementById('fireworks-btn'),
+            fireworksCanvas: document.getElementById('fireworks-canvas'),
         };
 
         // STATE
-        let slides = [], currentSlideIndex = 0, slideInterval;
+        let allSlides = [];
         let db, auth, appId, deviceSessionId, managedSessionId;
         let locations = [];
-        let unsubscribeSlides, unsubscribeTicker;
+        let unsubscribeSlides, unsubscribeTicker, unsubscribeEvents;
 
         // --- INITIALIZATION & MODE HANDLING ---
         async function init() {
@@ -276,10 +309,10 @@
                 await listenForLocations();
                 listenForSlides();
                 listenForTicker();
+                listenForEvents();
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                dom.contentArea.innerHTML = `<div class="text-red-500 text-center">Firebase initialization failed. Check console for errors and ensure your 'firebaseConfig' is correct.</div>`;
             }
         }
 
@@ -290,7 +323,6 @@
             const snapshot = await getDocs(query(locationsCollection));
             locations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             
-            // Populate dropdown
             dom.locationSelect.innerHTML = '';
             locations.forEach(loc => {
                 const option = document.createElement('option');
@@ -299,7 +331,6 @@
                 dom.locationSelect.appendChild(option);
             });
             
-            // Populate links list
             const linksContainer = dom.locationLinksList;
             linksContainer.innerHTML = '';
             if (locations.length === 0) {
@@ -353,27 +384,18 @@
             }
 
             try {
-                // Delete the location document
                 await deleteDoc(doc(db, `/artifacts/${appId}/public/data/locations`, sessionIdToDelete));
-
-                // Delete all slides for that location
                 const slidesQuery = query(collection(db, `/artifacts/${appId}/public/data/slides-${sessionIdToDelete}`));
                 const slidesSnapshot = await getDocs(slidesQuery);
                 for (const slideDoc of slidesSnapshot.docs) {
                     await deleteDoc(slideDoc.ref);
                 }
-
-                // Delete the ticker message for that location
                 await deleteDoc(doc(db, `/artifacts/${appId}/public/data/ticker-${sessionIdToDelete}/message`));
-
-                // If the deleted location was the current device's location, reset it
                 if (deviceSessionId === sessionIdToDelete) {
                     localStorage.removeItem('digital-signage-session-id');
                     deviceSessionId = crypto.randomUUID();
                     localStorage.setItem('digital-signage-session-id', deviceSessionId);
                 }
-
-                // Refresh the locations list
                 await listenForLocations();
 
             } catch (error) {
@@ -388,18 +410,19 @@
             localStorage.setItem('admin-managed-session-id', newSessionId);
             listenForSlides();
             listenForTicker();
+            listenForEvents();
         }
 
-        // --- DATA MANAGEMENT (SLIDES & TICKER) ---
+        // --- DATA MANAGEMENT ---
         function listenForSlides() {
             if (unsubscribeSlides) unsubscribeSlides();
             if (!db) return;
             const slidesCollection = collection(db, `/artifacts/${appId}/public/data/slides-${managedSessionId}`);
             unsubscribeSlides = onSnapshot(query(slidesCollection), (snapshot) => {
-                slides = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                slides.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                allSlides = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allSlides.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                renderDashboard();
                 renderCurrentSlidesList();
-                restartSlideshow();
             });
         }
         
@@ -411,6 +434,26 @@
                 const tickerText = doc.exists() ? doc.data().text : "Welcome! Use the admin panel to set a custom message.";
                 dom.ticker.innerHTML = `<span>${tickerText}</span>`;
                 dom.tickerInput.value = doc.exists() ? doc.data().text : "";
+            });
+        }
+
+        function listenForEvents() {
+            if (unsubscribeEvents) unsubscribeEvents();
+            if (!db) return;
+            const eventsCollection = collection(db, `/artifacts/${appId}/public/data/events-${deviceSessionId}`);
+            unsubscribeEvents = onSnapshot(query(eventsCollection), (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") {
+                        const eventData = change.doc.data();
+                        const eventTime = eventData.timestamp.toDate();
+                        // Only trigger for events in the last 10 seconds to avoid re-triggering on load
+                        if (Date.now() - eventTime.getTime() < 10000) {
+                            if (eventData.type === 'fireworks') {
+                                launchFireworks();
+                            }
+                        }
+                    }
+                });
             });
         }
 
@@ -433,14 +476,17 @@
             if (!db) return;
             await deleteDoc(doc(db, `/artifacts/${appId}/public/data/slides-${managedSessionId}`, id));
         }
+        
+        async function triggerFireworks() {
+            if (!db) return;
+            const eventsCollection = collection(db, `/artifacts/${appId}/public/data/events-${managedSessionId}`);
+            await addDoc(eventsCollection, { type: 'fireworks', timestamp: new Date() });
+        }
 
         // --- MEDIA UPLOAD ---
         async function uploadMedia() {
             const file = dom.mediaUploadInput.files[0];
-            if (!file) {
-                alert("Please select a file to upload.");
-                return;
-            }
+            if (!file) return alert("Please select a file to upload.");
 
             dom.uploadMediaBtnText.classList.add('hidden');
             dom.uploadMediaLoader.classList.remove('hidden');
@@ -457,24 +503,19 @@
                     method: 'POST',
                     body: formData
                 });
-
-                if (!response.ok) {
-                    throw new Error('Upload failed');
-                }
-
+                if (!response.ok) throw new Error('Upload failed');
                 const data = await response.json();
-                const mediaUrl = data.secure_url;
-
+                
                 await addSlide({
                     title: file.name,
-                    body: mediaUrl,
-                    type: isVideo ? 'video' : 'image'
+                    body: data.secure_url,
+                    type: isVideo ? 'video' : 'image',
+                    category: dom.categorySelect.value
                 });
-
-                dom.mediaUploadInput.value = ''; // Clear file input
+                dom.mediaUploadInput.value = '';
             } catch (error) {
                 console.error("Error uploading media:", error);
-                alert("Media upload failed. Please check the console for details.");
+                alert("Media upload failed.");
             } finally {
                 dom.uploadMediaBtnText.classList.remove('hidden');
                 dom.uploadMediaLoader.classList.add('hidden');
@@ -482,12 +523,61 @@
         }
 
         // --- UI & DISPLAY ---
+        function renderDashboard() {
+            dom.productionContent.innerHTML = '';
+            dom.qualityContent.innerHTML = '';
+            dom.hrContent.innerHTML = '';
+
+            const renderSlide = (slideData) => {
+                const card = document.createElement('div');
+                card.className = 'content-card h-full';
+                let contentElement;
+
+                if (slideData.type === 'image') {
+                    contentElement = document.createElement('img');
+                    contentElement.src = slideData.body;
+                } else if (slideData.type === 'video') {
+                    contentElement = document.createElement('video');
+                    contentElement.src = slideData.body;
+                    contentElement.autoplay = true;
+                    contentElement.muted = true;
+                    contentElement.loop = true;
+                } else if (slideData.type === 'google-slide') {
+                    contentElement = document.createElement('iframe');
+                    contentElement.src = slideData.body;
+                } else { // text
+                    contentElement = document.createElement('div');
+                    contentElement.innerHTML = `
+                        <h3 class="text-6xl font-bold mb-4">${slideData.title}</h3>
+                        <p class="text-4xl">${slideData.body}</p>
+                    `;
+                }
+                
+                const mediaContainer = document.createElement('div');
+                mediaContainer.className = 'content-card-media';
+                mediaContainer.appendChild(contentElement);
+                card.appendChild(mediaContainer);
+                return card;
+            };
+
+            allSlides.forEach(slide => {
+                const slideElement = renderSlide(slide);
+                if (slide.category === 'production') {
+                    dom.productionContent.appendChild(slideElement);
+                } else if (slide.category === 'quality') {
+                    dom.qualityContent.appendChild(slideElement);
+                } else if (slide.category === 'hr') {
+                    dom.hrContent.appendChild(slideElement);
+                }
+            });
+        }
+
         function renderCurrentSlidesList() {
-            dom.slidesList.innerHTML = slides.length ? '' : '<p class="text-gray-400">No slides yet.</p>';
-            slides.forEach(slide => {
+            dom.slidesList.innerHTML = allSlides.length ? '' : '<p class="text-gray-400">No slides yet.</p>';
+            allSlides.forEach(slide => {
                 const slideEl = document.createElement('div');
                 slideEl.className = 'bg-gray-800 p-2 rounded flex justify-between items-center';
-                let icon = '📝'; // Default to text
+                let icon = '📝';
                 if (slide.type === 'image') icon = '🖼️';
                 if (slide.type === 'video') icon = '🎬';
                 if (slide.type === 'google-slide') icon = '📊';
@@ -496,55 +586,6 @@
                     <button data-id="${slide.id}" class="delete-slide-btn text-red-500 hover:text-red-400 font-bold px-2">&times;</button>`;
                 dom.slidesList.appendChild(slideEl);
             });
-        }
-
-        function restartSlideshow() {
-            clearInterval(slideInterval);
-            currentSlideIndex = 0;
-            if (slides.length > 0) {
-                showNextSlide();
-                slideInterval = setInterval(showNextSlide, SLIDE_INTERVAL_MS);
-            } else {
-                dom.contentArea.innerHTML = `<div class="slide"><h1 class="text-7xl font-bold">No Content</h1><p class="text-4xl text-gray-400 mt-4">Add slides via the admin panel.</p></div>`;
-            }
-        }
-
-        function showNextSlide() {
-            if (slides.length === 0) return;
-            const slideData = slides[currentSlideIndex];
-            dom.contentArea.innerHTML = ''; // Clear previous content
-
-            let contentElement;
-            if (slideData.type === 'image') {
-                contentElement = document.createElement('img');
-                contentElement.src = slideData.body;
-                contentElement.alt = slideData.title;
-            } else if (slideData.type === 'video') {
-                contentElement = document.createElement('video');
-                contentElement.src = slideData.body;
-                contentElement.autoplay = true;
-                contentElement.muted = true;
-                contentElement.loop = true;
-            } else if (slideData.type === 'google-slide') {
-                contentElement = document.createElement('iframe');
-                contentElement.src = slideData.body;
-                contentElement.setAttribute('frameborder', '0');
-                contentElement.setAttribute('allowfullscreen', 'true');
-            } else {
-                contentElement = document.createElement('div');
-                let textContent = '';
-                if (slideData.title) textContent += `<h1 class="text-8xl font-bold mb-4">${slideData.title}</h1>`;
-                if (slideData.body) textContent += `<p class="text-5xl text-gray-300">${slideData.body}</p>`;
-                contentElement.innerHTML = textContent;
-            }
-            
-            const slideContainer = document.createElement('div');
-            slideContainer.className = 'slide';
-            slideContainer.style.display = 'flex'; // Make it visible
-            slideContainer.appendChild(contentElement);
-            dom.contentArea.appendChild(slideContainer);
-
-            currentSlideIndex = (currentSlideIndex + 1) % slides.length;
         }
 
         function updateTime() {
@@ -561,7 +602,7 @@
             dom.deleteLocationBtn.addEventListener('click', deleteLocation);
             dom.locationSelect.addEventListener('change', (e) => switchManagedSession(e.target.value));
             dom.updateTickerBtn.addEventListener('click', () => updateTicker(dom.tickerInput.value));
-            dom.addSlideBtn.addEventListener('click', () => addSlide({ title: dom.slideTitle.value, body: dom.slideBody.value, type: 'text' }));
+            dom.addSlideBtn.addEventListener('click', () => addSlide({ title: dom.slideTitle.value, body: dom.slideBody.value, type: 'text', category: dom.categorySelect.value }));
             dom.slidesList.addEventListener('click', (e) => {
                 const deleteBtn = e.target.closest('.delete-slide-btn');
                 if(deleteBtn) {
@@ -580,13 +621,126 @@
                     addSlide({
                         title: 'Google Slides',
                         body: embedUrl,
-                        type: 'google-slide'
+                        type: 'google-slide',
+                        category: dom.categorySelect.value
                     });
                 } catch (error) {
                     alert("Invalid Google Slides URL. Please use the 'Publish to the web' link.");
                     console.error("Error parsing Google Slides URL:", error);
                 }
             });
+            dom.fireworksBtn.addEventListener('click', triggerFireworks);
+        }
+
+        // --- FIREWORKS ANIMATION ---
+        const fireworksCanvas = dom.fireworksCanvas;
+        const ctx = fireworksCanvas.getContext('2d');
+        let fireworks = [];
+        let particles = [];
+        let animationFrameId;
+
+        function launchFireworks() {
+            fireworksCanvas.width = window.innerWidth;
+            fireworksCanvas.height = window.innerHeight;
+            
+            for (let i = 0; i < 5; i++) {
+                fireworks.push(new Firework());
+            }
+
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animate();
+
+            setTimeout(() => {
+                cancelAnimationFrame(animationFrameId);
+                ctx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+            }, 15000); // Stop after 15 seconds
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+
+            fireworks.forEach((firework, index) => {
+                firework.update();
+                firework.draw();
+                if (firework.exploded) {
+                    fireworks.splice(index, 1);
+                }
+            });
+
+            particles.forEach((particle, index) => {
+                particle.update();
+                particle.draw();
+                if (particle.alpha <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+            
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        class Particle {
+            constructor(x, y, color, velocity) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = velocity;
+                this.alpha = 1;
+                this.friction = 0.98;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2, false);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+            update() {
+                this.velocity.x *= this.friction;
+                this.velocity.y *= this.friction;
+                this.velocity.y += 0.05; // gravity
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.01;
+            }
+        }
+
+        class Firework {
+            constructor() {
+                this.x = Math.random() * fireworksCanvas.width;
+                this.y = fireworksCanvas.height;
+                this.targetY = Math.random() * (fireworksCanvas.height / 2);
+                this.color = `hsl(${Math.random() * 360}, 50%, 50%)`;
+                this.velocity = { x: (Math.random() - 0.5) * 3, y: -Math.random() * 7 - 3 };
+                this.exploded = false;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2, false);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+            update() {
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                if (this.y <= this.targetY) {
+                    this.explode();
+                    this.exploded = true;
+                }
+            }
+            explode() {
+                const particleCount = 100;
+                for (let i = 0; i < particleCount; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 5;
+                    particles.push(new Particle(this.x, this.y, this.color, {
+                        x: Math.cos(angle) * speed,
+                        y: Math.sin(angle) * speed
+                    }));
+                }
+            }
         }
 
         document.addEventListener('DOMContentLoaded', init);
