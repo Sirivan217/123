@@ -48,8 +48,8 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            border: 2px solid rgba(55, 65, 81, 0.8); /* Added outline */
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); /* Added subtle glow */
+            border: 2px solid rgba(55, 65, 81, 0.8);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
         }
         .content-card-media {
             flex-grow: 1;
@@ -84,7 +84,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1; /* Changed to play behind content */
+            z-index: -1;
             pointer-events: none;
         }
     </style>
@@ -157,6 +157,7 @@
         <div class="space-y-4 p-4 bg-gray-800 rounded-lg mb-6">
             <h3 class="text-xl font-bold">Add Google Slides</h3>
             <input type="text" id="gslide-url-input" placeholder="Paste 'Publish to web' link here" class="block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white">
+            <input type="number" id="gslide-count-input" placeholder="Number of slides" class="mt-2 block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white">
             <button id="add-gslide-btn" class="mt-2 w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg">Add Google Slides</button>
         </div>
 
@@ -251,6 +252,7 @@
             uploadMediaLoader: document.getElementById('upload-media-loader'),
             gslideUrlInput: document.getElementById('gslide-url-input'),
             addGslideBtn: document.getElementById('add-gslide-btn'),
+            gslideCountInput: document.getElementById('gslide-count-input'),
             productionContent: document.getElementById('production-content'),
             qualityContent: document.getElementById('quality-content'),
             hrContent: document.getElementById('hr-content'),
@@ -266,6 +268,11 @@
         let locations = [];
         let unsubscribeSlides, unsubscribeTicker, unsubscribeEvents;
         let fireworkInterval;
+        const slideshowStates = {
+            production: { currentIndex: 0, timer: null },
+            quality: { currentIndex: 0, timer: null },
+            hr: { currentIndex: 0, timer: null }
+        };
 
         // --- INITIALIZATION & MODE HANDLING ---
         async function init() {
@@ -430,7 +437,7 @@
             unsubscribeSlides = onSnapshot(query(slidesCollection), (snapshot) => {
                 allSlides = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 allSlides.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-                renderDashboard();
+                startSlideshows();
                 renderCurrentSlidesList();
             });
         }
@@ -477,6 +484,7 @@
             dom.slideTitle.value = '';
             dom.slideBody.value = '';
             dom.gslideUrlInput.value = '';
+            dom.gslideCountInput.value = '';
         }
         
         async function deleteSlide(id) {
@@ -530,54 +538,69 @@
         }
 
         // --- UI & DISPLAY ---
-        function renderDashboard() {
-            dom.productionContent.innerHTML = '';
-            dom.qualityContent.innerHTML = '';
-            dom.hrContent.innerHTML = '';
-
-            const renderSlide = (slideData) => {
-                const card = document.createElement('div');
-                card.className = 'content-card h-full';
-                let contentElement;
-
-                if (slideData.type === 'image') {
-                    contentElement = document.createElement('img');
-                    contentElement.src = slideData.body;
-                } else if (slideData.type === 'video') {
-                    contentElement = document.createElement('video');
-                    contentElement.src = slideData.body;
-                    contentElement.autoplay = true;
-                    contentElement.muted = true;
-                    contentElement.loop = true;
-                } else if (slideData.type === 'google-slide') {
-                    contentElement = document.createElement('iframe');
-                    contentElement.src = slideData.body;
-                } else { // text
-                    contentElement = document.createElement('div');
-                    contentElement.innerHTML = `
-                        <h3 class="text-6xl font-bold mb-4">${slideData.title}</h3>
-                        <p class="text-4xl">${slideData.body}</p>
-                    `;
-                }
-                
-                const mediaContainer = document.createElement('div');
-                mediaContainer.className = 'content-card-media';
-                mediaContainer.appendChild(contentElement);
-                card.appendChild(mediaContainer);
-                return card;
-            };
-
-            allSlides.forEach(slide => {
-                const slideElement = renderSlide(slide);
-                if (slide.category === 'production') {
-                    dom.productionContent.appendChild(slideElement);
-                } else if (slide.category === 'quality') {
-                    dom.qualityContent.appendChild(slideElement);
-                } else if (slide.category === 'hr') {
-                    dom.hrContent.appendChild(slideElement);
-                }
+        function startSlideshows() {
+            Object.keys(slideshowStates).forEach(category => {
+                showNextSlide(category);
             });
         }
+
+        function showNextSlide(category) {
+            const state = slideshowStates[category];
+            const container = dom[`${category}Content`];
+            const categorySlides = allSlides.filter(s => s.category === category);
+
+            clearTimeout(state.timer);
+            container.innerHTML = '';
+
+            if (categorySlides.length === 0) {
+                container.innerHTML = `<div class="content-card h-full flex items-center justify-center"><p class="text-2xl text-gray-400">No Content</p></div>`;
+                return;
+            }
+
+            state.currentIndex = (state.currentIndex >= categorySlides.length) ? 0 : state.currentIndex;
+            const slideData = categorySlides[state.currentIndex];
+            
+            const card = document.createElement('div');
+            card.className = 'content-card h-full';
+            let contentElement;
+            let duration = 10000; // Default 10 seconds for text/image
+
+            if (slideData.type === 'image') {
+                contentElement = document.createElement('img');
+                contentElement.src = slideData.body;
+            } else if (slideData.type === 'video') {
+                contentElement = document.createElement('video');
+                contentElement.src = slideData.body;
+                contentElement.autoplay = true;
+                contentElement.muted = true;
+                contentElement.loop = false; // Play once
+                contentElement.onended = () => showNextSlide(category);
+                duration = null; // Let the video end event trigger the next slide
+            } else if (slideData.type === 'google-slide') {
+                contentElement = document.createElement('iframe');
+                contentElement.src = slideData.body;
+                duration = (slideData.slideCount || 1) * 5000; // 5 seconds per slide
+            } else { // text
+                contentElement = document.createElement('div');
+                contentElement.innerHTML = `
+                    <h3 class="text-6xl font-bold mb-4">${slideData.title}</h3>
+                    <p class="text-4xl">${slideData.body}</p>
+                `;
+            }
+            
+            const mediaContainer = document.createElement('div');
+            mediaContainer.className = 'content-card-media';
+            mediaContainer.appendChild(contentElement);
+            card.appendChild(mediaContainer);
+            container.appendChild(card);
+
+            state.currentIndex = (state.currentIndex + 1) % categorySlides.length;
+
+            if (duration !== null) {
+                state.timer = setTimeout(() => showNextSlide(category), duration);
+            }
+        }
+
 
         function renderCurrentSlidesList() {
             dom.slidesList.innerHTML = allSlides.length ? '' : '<p class="text-gray-400">No slides yet.</p>';
@@ -619,17 +642,22 @@
             dom.uploadMediaBtn.addEventListener('click', uploadMedia);
             dom.addGslideBtn.addEventListener('click', () => {
                 const publishUrl = dom.gslideUrlInput.value;
-                if (!publishUrl) return;
+                const slideCount = parseInt(dom.gslideCountInput.value, 10);
+                if (!publishUrl || !slideCount || slideCount <= 0) {
+                    alert("Please provide a valid 'Publish to web' link and the number of slides.");
+                    return;
+                }
                 try {
                     const url = new URL(publishUrl);
                     const path = url.pathname;
-                    const embedUrl = `https://docs.google.com${path.replace('/pub', '/embed')}?start=true&loop=true&delayms=3000&rm=minimal`;
+                    const embedUrl = `https://docs.google.com${path.replace('/pub', '/embed')}?start=true&loop=false&delayms=5000&rm=minimal`;
                     
                     addSlide({
                         title: 'Google Slides',
                         body: embedUrl,
                         type: 'google-slide',
-                        category: dom.categorySelect.value
+                        category: dom.categorySelect.value,
+                        slideCount: slideCount
                     });
                 } catch (error) {
                     alert("Invalid Google Slides URL. Please use the 'Publish to the web' link.");
