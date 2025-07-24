@@ -647,10 +647,16 @@
                     alert("Please provide a valid 'Publish to web' link and the number of slides.");
                     return;
                 }
+                
+                if (!publishUrl.includes('/pub?')) {
+                    alert("Invalid URL. Please make sure you are using the 'Publish to the web' link from Google Slides, not the link from your browser's address bar.");
+                    return;
+                }
+
                 try {
                     const url = new URL(publishUrl);
                     const path = url.pathname;
-                    const embedUrl = `https://docs.google.com${path.replace('/pub', '/embed')}?start=true&loop=false&delayms=5000&rm=minimal`;
+                    const embedUrl = `https://docs.google.com${path.replace('/pub', '/embed')}?start=true&loop=true&delayms=5000&rm=minimal`;
                     
                     addSlide({
                         title: 'Google Slides',
