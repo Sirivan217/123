@@ -181,7 +181,7 @@
 
         <div class="mt-8">
              <h3 class="text-xl font-bold mb-2">Current Slides</h3>
-             <div id="current-slides-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
+             <div id="current-slides-list" class="space-y-4"></div>
         </div>
     </div>
 
@@ -603,18 +603,45 @@
 
 
         function renderCurrentSlidesList() {
-            dom.slidesList.innerHTML = allSlides.length ? '' : '<p class="text-gray-400">No slides yet.</p>';
+            dom.slidesList.innerHTML = '';
+            const categories = {
+                production: [],
+                quality: [],
+                hr: []
+            };
+
             allSlides.forEach(slide => {
-                const slideEl = document.createElement('div');
-                slideEl.className = 'bg-gray-800 p-2 rounded flex justify-between items-center';
-                let icon = '📝';
-                if (slide.type === 'image') icon = '🖼️';
-                if (slide.type === 'video') icon = '🎬';
-                if (slide.type === 'google-slide') icon = '📊';
-                
-                slideEl.innerHTML = `<p class="truncate"><span class="mr-2">${icon}</span>${slide.title || slide.body}</p>
-                    <button data-id="${slide.id}" class="delete-slide-btn text-red-500 hover:text-red-400 font-bold px-2">&times;</button>`;
-                dom.slidesList.appendChild(slideEl);
+                if (categories[slide.category]) {
+                    categories[slide.category].push(slide);
+                }
+            });
+
+            if (allSlides.length === 0) {
+                 dom.slidesList.innerHTML = '<p class="text-gray-400">No slides yet.</p>';
+                 return;
+            }
+
+            Object.keys(categories).forEach(category => {
+                const slidesInCategory = categories[category];
+                if (slidesInCategory.length > 0) {
+                    const categoryHeader = document.createElement('h4');
+                    categoryHeader.className = 'text-lg font-bold text-gray-300 capitalize mt-4';
+                    categoryHeader.textContent = category;
+                    dom.slidesList.appendChild(categoryHeader);
+
+                    slidesInCategory.forEach(slide => {
+                        const slideEl = document.createElement('div');
+                        slideEl.className = 'bg-gray-800 p-2 rounded flex justify-between items-center';
+                        let icon = '📝';
+                        if (slide.type === 'image') icon = '🖼️';
+                        if (slide.type === 'video') icon = '🎬';
+                        if (slide.type === 'google-slide') icon = '📊';
+                        
+                        slideEl.innerHTML = `<p class="truncate"><span class="mr-2">${icon}</span>${slide.title || slide.body}</p>
+                            <button data-id="${slide.id}" class="delete-slide-btn text-red-500 hover:text-red-400 font-bold px-2">&times;</button>`;
+                        dom.slidesList.appendChild(slideEl);
+                    });
+                }
             });
         }
 
