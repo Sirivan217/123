@@ -177,37 +177,35 @@
     </div>
 
     <!-- Main Content Grid -->
-    <main class="flex-grow grid grid-cols-3 grid-rows-1 gap-4 p-4 h-full">
-        <!-- Main Content Area -->
-        <div class="col-span-2 flex flex-col gap-4">
-             <header class="flex justify-between items-center px-2">
-                <div>
-                    <p class="text-3xl text-gray-400">Location:</p>
-                    <p id="location-display" class="text-5xl font-bold text-gray-200">Loading...</p>
+    <main class="flex-grow flex flex-col gap-4 p-4 h-full">
+        <header class="flex justify-between items-center px-2">
+            <div>
+                <p class="text-2xl text-gray-400">Location:</p>
+                <p id="location-display" class="text-4xl font-bold text-gray-200">Loading...</p>
+            </div>
+            <div id="time-date-container" class="text-right">
+                <div id="time" class="text-8xl font-black leading-none"></div>
+                <div id="date" class="text-3xl font-bold text-gray-400"></div>
+            </div>
+            <button id="open-admin-btn" class="bg-gray-700/50 hover:bg-gray-600/50 text-white font-bold py-2 px-4 rounded-lg text-sm hidden self-start">Admin</button>
+        </header>
+        <div class="flex-grow grid grid-cols-3 gap-4">
+            <!-- Left Column -->
+            <div class="col-span-1 grid grid-rows-2 gap-4">
+                <div class="row-span-1 flex flex-col gap-2">
+                    <h2 class="text-5xl font-bold text-center">HR</h2>
+                    <div id="hr-content" class="flex-grow space-y-4 overflow-y-auto p-2"></div>
                 </div>
-                <div id="time-date-container" class="text-right">
-                    <div id="time" class="text-9xl font-black leading-none"></div>
-                    <div id="date" class="text-4xl font-bold text-gray-400"></div>
-                </div>
-                 <button id="open-admin-btn" class="bg-gray-700/50 hover:bg-gray-600/50 text-white font-bold py-2 px-4 rounded-lg text-sm hidden self-start">Admin</button>
-            </header>
-            <div class="flex-grow grid grid-cols-2 gap-4">
-                <!-- Production Column -->
-                <div class="flex flex-col gap-4">
-                    <h2 class="text-6xl font-bold text-center">Production</h2>
+                <div class="row-span-1 flex flex-col gap-2">
+                    <h2 class="text-5xl font-bold text-center">Production</h2>
                     <div id="production-content" class="flex-grow space-y-4 overflow-y-auto p-2"></div>
                 </div>
-                <!-- Quality Column -->
-                <div class="flex flex-col gap-4">
-                    <h2 class="text-6xl font-bold text-center">Quality</h2>
-                    <div id="quality-content" class="flex-grow space-y-4 overflow-y-auto p-2"></div>
-                </div>
             </div>
-        </div>
-        <!-- HR Column -->
-        <div class="col-span-1 flex flex-col gap-4">
-             <h2 class="text-6xl font-bold text-center">HR</h2>
-             <div id="hr-content" class="flex-grow space-y-4 overflow-y-auto p-2"></div>
+            <!-- Right Column (Main) -->
+            <div class="col-span-2 flex flex-col gap-4">
+                <h2 class="text-6xl font-bold text-center">Quality</h2>
+                <div id="quality-content" class="flex-grow space-y-4 overflow-y-auto p-2"></div>
+            </div>
         </div>
     </main>
 
